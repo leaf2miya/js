@@ -208,6 +208,11 @@ function main(data){
       // 派兵画面
       chrome.extension.sendMessage({method: "getData", key: "cache" }, function(response) {
         console.log(response.local["char"] + ":" + response.local["mode"] + ":" + response.local["mid"]);
+        var home_soldiers = {}
+        $("ul#hei > li[style!=\"display:none;\"]").each(function(){
+          home_soldiers[$.url($(this).find("img").attr("src")).attr("file")] = parseInt($(this).find("span").text())
+        });
+        console.log(home_soldiers)
         // 武将選択
         $("table#hahei-table").find($("th.name")).each(function(){
           if($(this).text().match(response.local["char"])){
@@ -218,6 +223,28 @@ function main(data){
               // チェックボックスの既存イベントを呼び、予めボタンを表示させる必要がある
               $(this).parent().children("th.check").find($("input:checkbox")).trigger("click");
               $(this).parent().children("th.check").find($("input:checkbox")).attr("checked",true);
+              var hei_max = parseInt($(this).parent().next().find("span[id*=\"sub_soldier\"]").text().split("/")[1])
+              console.log(hei_max)
+              $("tr.on").each(function(){
+                // 色塗り部隊は兵力補充できないので除外
+                if($(this).find("td > input[type=\"text\"]").attr("onfocus") == undefined){
+                  var hei_type = $.url($(this).find("td > img").attr("src")).attr("file")
+                  var hei_cnt =  parseInt($(this).find("td > input[type=\"text\"]").attr("value"))
+                  console.log(hei_type)
+                  console.log(hei_cnt)
+                  console.log(hei_max)
+                  if(home_soldiers[hei_type] == undefined || home_soldiers[hei_type] == 0 || hei_cnt == hei_max || hei_max == 0){
+                  // no action
+                  }else if(home_soldiers[hei_type] + hei_cnt <= hei_max){
+                    $(this).find("td > input[type=\"text\"]").attr("value", String(home_soldiers[hei_type] + hei_cnt))
+                    hei_max -= (home_soldiers[hei_type] + hei_cnt)
+                  }else if(home_soldiers[hei_type] + hei_cnt >= hei_max){
+                    $(this).find("td > input[type=\"text\"]").attr("value", String(hei_max))
+                    hei_max = 0
+                  }
+                }
+              });
+
               $("input#type_9").attr("checked",true);
               $("input:image[title=\"確認\"]").trigger("click");
             }else{
