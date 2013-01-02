@@ -160,58 +160,42 @@ function main(data){
             return 0;
           }
         }else if(response.local["mode"] == "小城"){
-          /*
-          小城の破損は画像で判断するしかないが、絶対座標指定で並べられているので、areaタグと関連がない。
-          以下の法則に従って、タグの特定を行うしかないか
-          1マス: 128 * 64
-            Y軸下方向 プラス 
-            Y軸上方向 マイナス 
-            X軸右方向 プラス
-            X軸左方向 マイナス
-          マップ中央位置はtop:30, left:60
-          位置関係が 
-           右方向に1マス => +64, +32
-           左方向に1マス => -64, -32
-           上方向に1マス => +64, -32
-           下方向に1マス => -64, +32
-          */
           base_pos = parseInt(response.local["mid"]);
           attack_element = null; // 攻撃目標
           pos_distance = 999999; // 所在地から敵地までの距離
           target_mid = 999999;
-          $("map[name=\"cm\"] > area").each(function(){
-            if($(this).attr("onmouseover").match(/showCityInfo\(\s*'(.*)'\s*,\s*'.*'\s*,\s*'(.*)'\s*,\s*'(.*)'\s*,\s*'.*'\s*,\s*'.*'\s*,\s*'.*'\s*,\s*'.*'\s*,\s*'.*'\s*,\s*'.*'\s*\)/)) {
-              if(RegExp.$2 == "帝" && RegExp.$3 == '小城'){
-                console.log(RegExp.$1 + ":" + RegExp.$2 + ":" + RegExp.$3);
-                find_pos = parseInt(RegExp.$1);
-                // 小城の破損判定
-                // 数値が正しく取れないケースがある。もしかしたらyの増減がプラスマイナス401じゃない行があるのかもしれない。
-                find_top = (parseInt((base_pos - find_pos) / 401));
-                find_left = ((find_pos - base_pos) % 401);
-                console.log("Find. top:" + find_top + " left: " + find_left)
-                // エレメントのget。leftとtopの値から特定する
-                integrated_top = find_top * -32 + find_left * 32;
-                integrated_left = find_top * 64 + find_left * 64;
-                console.log("Find. top: " + (integrated_top + 30) + "px; left: " + (integrated_left + 60) + "px;");
-                ca_element = $("img[style*=\"top: "+ (integrated_top + 30) + "px; left: "+ (integrated_left + 60) +"px;z-index:1;\"]");
-                if(ca_element != null){
-                  img_src = $.url(ca_element.attr("src"));
-                  if(img_src.attr("file") == "3_1.gif"){
-                    find_distance = Math.abs(find_top) + Math.abs(find_left);
-                    if(find_distance < pos_distance){
-                      attack_element = $(this);
-                      pos_distance = find_distance;
-                      target_mid = find_pos;
-                    }
+          $("a[href*=\"../chizu/detail?mid=\"]").each(function(){
+            $(this).mouseover();
+            // #m_cname は国の名前が入る
+            // #m_pname は土地の名前が入る(ex. 小城)
+            if($("#m_cname").text() != my_org){
+              if($("#m_pname").text() == "小城"){
+                console.log($.url($(this).find("img").attr("src")).attr("file"))
+                if($.url($(this).find("img").attr("src")).attr("file") == "3_1.gif"){
+
+                  var tmp_pos = $(this).attr("onmouseover").match(/showCityInfo\((\d+)\);/);
+                  find_pos = parseInt(RegExp.$1);
+                  console.log($("#m_cname").text());
+                  console.log(find_pos);
+
+                  var pos_diff = Math.abs(base_pos - find_pos);
+                  var diff_sho = Math.round(pos_diff / 401)
+                  var diff_amari = Math.abs(pos_diff - diff_sho * 401);
+                  console.log(diff_sho + diff_amari);
+
+                  if((diff_sho + diff_amari) < pos_distance){
+                    attack_element = $(this);
+                    pos_distance = (diff_sho + diff_amari);
+                    target_mid = find_pos;
                   }
                 }
               }
             }
           });
-          console.log(target_mid)
           if(pos_distance != 999999){
             chrome.extension.sendMessage({method: "setData", data: {"char":response.local["char"], "mode":response.local["mode"], "mid":response.local["mid"], target:target_mid, "flag":true } }, function(response) {
-              attack_element.mouseup();
+              console.log(attack_element.attr("href"))
+              a_click(attack_element.attr("href"));
             });
           }else{
             console.log("攻撃目標見つかりませーん");
